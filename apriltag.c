@@ -1008,6 +1008,7 @@ zarray_t *apriltag_detector_detect(apriltag_detector_t *td, image_u8_t *im_orig)
     }
 
     if (td->wp == NULL || td->nthreads != workerpool_get_nthreads(td->wp)) {
+		printf("creating threads......................\n");
         workerpool_destroy(td->wp);
         td->wp = workerpool_create(td->nthreads);
         if (td->wp == NULL) {
