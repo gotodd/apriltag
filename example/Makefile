@@ -3,10 +3,10 @@ CXX = g++
 
 CPPFLAGS = -I.. `pkg-config --cflags opencv4`
 CFLAGS = -g -std=gnu99 -Wall -Wno-unused-parameter -Wno-unused-function -O3
-CXXFLAGS = -g -Wall -O3
+CXXFLAGS = -g -Wall -O3 -std=c++11
 LDFLAGS = -lpthread -lm
 
-TARGETS := apriltag_demo opencv_demo
+TARGETS := apriltag_demo #opencv_demo
 
 .PHONY: all
 all: apriltag_demo opencv_demo

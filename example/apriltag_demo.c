@@ -34,12 +34,8 @@ either expressed or implied, of the Regents of The University of Michigan.
 #include <stdint.h>
 #include <inttypes.h>
 #include <ctype.h>
+#include <unistd.h>
 #include <math.h>
-#include <errno.h>
-
-#ifdef __linux__
-    #include <unistd.h>
-#endif
 
 #include "apriltag.h"
 #include "tag36h11.h"
@@ -53,10 +49,14 @@ either expressed or implied, of the Regents of The University of Michigan.
 
 #include "common/getopt.h"
 #include "common/image_u8.h"
+#include "common/image_u8x4.h"
 #include "common/pjpeg.h"
 #include "common/zarray.h"
+#include "apriltag_pose.h"
 
-#define  HAMM_HIST_MAX 10
+// Invoke:
+//
+// tagtest [options] input.pnm
 
 int main(int argc, char *argv[])
 {
@@ -106,16 +106,6 @@ int main(int argc, char *argv[])
 
     apriltag_detector_t *td = apriltag_detector_create();
     apriltag_detector_add_family_bits(td, tf, getopt_get_int(getopt, "hamming"));
-
-    switch(errno){
-        case EINVAL:
-            printf("\"hamming\" parameter is out-of-range.\n");
-            exit(-1);
-        case ENOMEM:
-            printf("Unable to add family to detector due to insufficient memory to allocate the tag-family decoder. Try reducing \"hamming\" from %d or choose an alternative tag family.\n", getopt_get_int(getopt, "hamming"));
-            exit(-1);
-    }
-
     td->quad_decimate = getopt_get_double(getopt, "decimate");
     td->quad_sigma = getopt_get_double(getopt, "blur");
     td->nthreads = getopt_get_int(getopt, "threads");
@@ -126,11 +116,13 @@ int main(int argc, char *argv[])
 
     int maxiters = getopt_get_int(getopt, "iters");
 
+    const int hamm_hist_max = 10;
+
     for (int iter = 0; iter < maxiters; iter++) {
 
         int total_quads = 0;
-        int total_hamm_hist[HAMM_HIST_MAX];
-        memset(total_hamm_hist, 0, sizeof(int)*HAMM_HIST_MAX);
+        int total_hamm_hist[hamm_hist_max];
+        memset(total_hamm_hist, 0, sizeof(total_hamm_hist));
         double total_time = 0;
 
         if (maxiters > 1)
@@ -138,7 +130,7 @@ int main(int argc, char *argv[])
 
         for (int input = 0; input < zarray_size(inputs); input++) {
 
-            int hamm_hist[HAMM_HIST_MAX];
+            int hamm_hist[hamm_hist_max];
             memset(hamm_hist, 0, sizeof(hamm_hist));
 
             char *path;
@@ -156,7 +148,7 @@ int main(int argc, char *argv[])
                 int err = 0;
                 pjpeg_t *pjpeg = pjpeg_create_from_file(path, 0, &err);
                 if (pjpeg == NULL) {
-                    printf("pjpeg failed to load: %s, error %d\n", path, err);
+                    printf("pjpeg error %d\n", err);
                     continue;
                 }
 
@@ -199,22 +191,39 @@ int main(int argc, char *argv[])
                 continue;
             }
 
-            printf("image: %s %dx%d\n", path, im->width, im->height);
-
             zarray_t *detections = apriltag_detector_detect(td, im);
-
-            if (errno == EAGAIN) {
-                printf("Unable to create the %d threads requested.\n",td->nthreads);
-                exit(-1);
-            }
 
             for (int i = 0; i < zarray_size(detections); i++) {
                 apriltag_detection_t *det;
                 zarray_get(detections, i, &det);
 
-                if (!quiet)
-                    printf("detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f\n",
-                           i, det->family->nbits, det->family->h, det->id, det->hamming, det->decision_margin);
+                if (!quiet){
+					apriltag_detection_info_t info;
+					apriltag_pose_t pose;
+                    printf("detection %3d: id (%2dx%2d)-%-4d, hamming %d, margin %8.3f, center (%.2f,%.2f) \n",
+                           i, det->family->nbits, det->family->h, det->id, det->hamming, det->decision_margin,det->c[0], det->c[1] );
+					int k=0;
+					for (k=0;k<4;k++){
+						printf("p%d  (%.2f,%.2f)\n",k,det->p[k][0],det->p[k][1]);
+					}
+					// Pose Estimate. First create an apriltag_detection_info_t struct using your known parameters.
+					// F(mm) = F(pixels) * SensorWidth(mm) / ImageWidth (pixel)
+					// F(pixels) = ( F(mm)/ SensorWidth(mm)) * ImageWidth (pixel)
+					// For iphone XS Max, F(mm)=4.25mm, Sensorwidth=5.76 x 4.29mm (4:3), ImageWidth=3024, height=4032
+					info.det = det;
+					info.tagsize = 0.1;
+					info.fx = (4.25/5.76)*4032;
+					info.fy = (4.25/4.29)*3024;
+					info.cx = 2016;
+					info.cy = 1512;
+
+					// Then call estimate_tag_pose.
+					double err = estimate_tag_pose(&info, &pose);
+					printf("err=%.2f\n",err);
+					printf("R rows=%d cols=%d\n",pose.R->nrows, pose.R->ncols);
+					printf("t rows=%d cols=%d\n",pose.t->nrows, pose.t->ncols);
+					printf("t0=%.2f, t1=%.2f t2=%.2f\n",MATD_EL(pose.t,0,0),MATD_EL(pose.t,1,0),MATD_EL(pose.t,2,0));
+				}
 
                 hamm_hist[det->hamming]++;
                 total_hamm_hist[det->hamming]++;
@@ -231,7 +240,7 @@ int main(int argc, char *argv[])
             if (!quiet)
                 printf("hamm ");
 
-            for (int i = 0; i < HAMM_HIST_MAX; i++)
+            for (int i = 0; i < hamm_hist_max; i++)
                 printf("%5d ", hamm_hist[i]);
 
             double t =  timeprofile_total_utime(td->tp) / 1.0E3;
@@ -249,7 +258,7 @@ int main(int argc, char *argv[])
 
         printf("hamm ");
 
-        for (int i = 0; i < HAMM_HIST_MAX; i++)
+        for (int i = 0; i < hamm_hist_max; i++)
             printf("%5d ", total_hamm_hist[i]);
         printf("%12.3f ", total_time);
         printf("%5d", total_quads);
