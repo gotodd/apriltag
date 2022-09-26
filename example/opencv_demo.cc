@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
         if (waitKey(30) >= 0)
             break;
 #endif
-		if (frame_counter > 300){
+		if (frame_counter > 30000){
 			break;
 		}
     }
