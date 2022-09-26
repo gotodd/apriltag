@@ -29,7 +29,7 @@ static int allsprintf( char **strp, const char *fmt, ... )
 		len = vsnprintf( NULL, 0, fmt, ap );
 		if ( len >= 0 )
 		{
-			buf = malloc( ++len );
+			buf = calloc( ++len,1 );
 			if ( buf != NULL )
 			{
 				// Hopefully, that's the right way to do it
