@@ -44,6 +44,7 @@ extern "C" {
 #include "common/getopt.h"
 #include "apriltag_pose.h"
 #include "mkjson.h"
+#include "udpclient.h"
 #include "stdio.h"
 }
 
@@ -219,6 +220,7 @@ int main(int argc, char *argv[])
 				);
 			printf("%s\n",json);
 			fflush(stdout);
+			udpsend((char *)"127.0.0.1",4001,json);
 			free(json);
 		}
 
