@@ -18,17 +18,20 @@ static void error(char *msg) {
     exit(0);
 }
 
+static int sockfd=-1;
 int udpsend(char *hostname, int portno, char *msg){
-    int sockfd, n;
+    int n;
     int serverlen;
     struct sockaddr_in serveraddr;
     struct hostent *server;
 
     /* socket: create the socket */
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        error("ERROR opening socket");
-	}
+    if (sockfd < 0){
+	    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	    if (sockfd < 0) {
+		error("ERROR opening socket");
+		}
+    }
 
     /* gethostbyname: get the server's DNS entry */
     server = gethostbyname(hostname);
