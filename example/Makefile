@@ -15,7 +15,7 @@ apriltag_demo: apriltag_demo.o ../libapriltag.a
 	@echo "   [$@]"
 	@$(CC) -o $@ $^ $(LDFLAGS)
 
-opencv_demo: opencv_demo.o ../libapriltag.a
+opencv_demo: opencv_demo.o mkjson.o ../libapriltag.a
 	@echo "   [$@]"
 	@$(CXX) -o $@ $^ $(LDFLAGS) `pkg-config --libs opencv4`
 

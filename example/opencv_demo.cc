@@ -43,6 +43,8 @@ extern "C" {
 #include "tagStandard52h13.h"
 #include "common/getopt.h"
 #include "apriltag_pose.h"
+#include "mkjson.h"
+#include "stdio.h"
 }
 
 using namespace std;
@@ -207,7 +209,19 @@ int main(int argc, char *argv[])
 			printf("t rows=%d cols=%d\n",pose.t->nrows, pose.t->ncols);
 			printf("t0=%.2f, t1=%.2f t2=%.2f\n",MATD_EL(pose.t,0,0),MATD_EL(pose.t,1,0),MATD_EL(pose.t,2,0));
 
-        }
+			char *json = mkjson( MKJSON_OBJ, 3,
+				//MKJSON_STRING,      "mystr", "hello world!",
+				//MKJSON_INT,         "myinteger", 42,
+				//MKJSON_LLINT,       "longlong", 784ll,
+				MKJSON_DOUBLE,      "t0", MATD_EL(pose.t,0,0),
+				MKJSON_DOUBLE,      "t1", MATD_EL(pose.t,1,0),
+				MKJSON_DOUBLE,      "t2", MATD_EL(pose.t,2,0)
+				);
+			printf("%s\n",json);
+			fflush(stdout);
+			free(json);
+		}
+
         apriltag_detections_destroy(detections);
 
 #if 0
