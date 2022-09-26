@@ -29,6 +29,7 @@ either expressed or implied, of the Regents of The University of Michigan.
 #include <iomanip>
 
 #include "opencv2/opencv.hpp"
+#include <time.h>
 
 extern "C" {
 #include "apriltag.h"
@@ -41,6 +42,7 @@ extern "C" {
 #include "tagStandard41h12.h"
 #include "tagStandard52h13.h"
 #include "common/getopt.h"
+#include "apriltag_pose.h"
 }
 
 using namespace std;
@@ -135,10 +137,12 @@ int main(int argc, char *argv[])
     meter.reset();
 
     Mat frame, gray;
+	time_t start_time=time(NULL);
     while (true) {
         errno = 0;
         cap >> frame;
         cvtColor(frame, gray, COLOR_BGR2GRAY);
+		frame_counter++;
 
         // Make an image_u8_t header for the Mat data
         image_u8_t im = { .width = gray.cols,
@@ -182,13 +186,41 @@ int main(int argc, char *argv[])
             putText(frame, text, Point(det->c[0]-textsize.width/2,
                                        det->c[1]+textsize.height/2),
                     fontface, fontscale, Scalar(0xff, 0x99, 0), 2);
+
+			// Pose Estimate. First create an apriltag_detection_info_t struct using your known parameters.
+			// F(mm) = F(pixels) * SensorWidth(mm) / ImageWidth (pixel)
+			// F(pixels) = ( F(mm)/ SensorWidth(mm)) * ImageWidth (pixel)
+			// For iphone XS Max, F(mm)=4.25mm, Sensorwidth=5.76 x 4.29mm (4:3), ImageWidth=3024, height=4032
+			apriltag_detection_info_t info;
+			apriltag_pose_t pose;
+			info.det = det;
+			info.tagsize = 0.1;
+			info.fx = (4.25/5.76)*4032;
+			info.fy = (4.25/4.29)*3024;
+			info.cx = 2016;
+			info.cy = 1512;
+
+			// Then call estimate_tag_pose.
+			double err = estimate_tag_pose(&info, &pose);
+			printf("err=%.2f\n",err);
+			printf("R rows=%d cols=%d\n",pose.R->nrows, pose.R->ncols);
+			printf("t rows=%d cols=%d\n",pose.t->nrows, pose.t->ncols);
+			printf("t0=%.2f, t1=%.2f t2=%.2f\n",MATD_EL(pose.t,0,0),MATD_EL(pose.t,1,0),MATD_EL(pose.t,2,0));
+
         }
         apriltag_detections_destroy(detections);
 
+#if 0
         imshow("Tag Detections", frame);
         if (waitKey(30) >= 0)
             break;
+#endif
+		if (frame_counter > 300){
+			break;
+		}
     }
+	time_t stop_time=time(NULL);
+	printf("timespent=%ld s, frames=%.1f, fps=%.1f\n",(stop_time-start_time),frame_counter,frame_counter/(stop_time-start_time));
 
     apriltag_detector_destroy(td);
 
