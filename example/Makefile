@@ -19,6 +19,10 @@ opencv_demo: opencv_demo.o mkjson.o udpclient.o ../libapriltag.a
 	@echo "   [$@]"
 	@$(CXX) -o $@ $^ $(LDFLAGS) `pkg-config --libs opencv4`
 
+mat2eu: rotation_matrix_to_euler.cc
+	@echo "   $@"
+	@$(CXX) -o $@  $< $(CXXFLAGS) $(CPPFLAGS)  $(LDFLAGS) `pkg-config --libs opencv4`
+
 %.o: %.c
 	@echo "   $@"
 	@$(CC) -o $@ -c $< $(CFLAGS) $(CPPFLAGS)
