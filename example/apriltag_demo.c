@@ -53,6 +53,7 @@ either expressed or implied, of the Regents of The University of Michigan.
 #include "common/pjpeg.h"
 #include "common/zarray.h"
 #include "apriltag_pose.h"
+#include "common/doubles.h"
 
 // Invoke:
 //
@@ -223,6 +224,27 @@ int main(int argc, char *argv[])
 					printf("R rows=%d cols=%d\n",pose.R->nrows, pose.R->ncols);
 					printf("t rows=%d cols=%d\n",pose.t->nrows, pose.t->ncols);
 					printf("t0=%.2f, t1=%.2f t2=%.2f\n",MATD_EL(pose.t,0,0),MATD_EL(pose.t,1,0),MATD_EL(pose.t,2,0));
+
+					//get rotation (Roll,Pitch,Yaw)
+					//Use the method common//doubles.h:s_mat_to_quat to get a quaternion from the matrix. 
+					//Then use common/doubles.h:s_quat_to_rpy to convert that quaternion to RPY.
+					double m44[16];
+					double q[4];
+					double rpy[3];
+					int row,col;
+					for (k=0;k<16;k++){
+						row=k/4; col=k%4;
+						if (row==3 || col==3){
+							m44[k]=0;
+						}else{
+							m44[k]=MATD_EL(pose.t,row,col);
+						}
+						printf("m44[%d]=%.2f, row=%d, col=%d\n",k,m44[k],row,col);
+					}
+					doubles_mat_to_quat(m44, q);
+					printf("q=%.2f, %.2f %.2f %.2f\n",q[0],q[1],q[2],q[3]);
+					doubles_quat_to_rpy(q,rpy);
+					printf("r=%.2f, p=%.2f y=%.2f\n",rpy[0],rpy[1],rpy[2]);
 				}
 
                 hamm_hist[det->hamming]++;
