@@ -46,6 +46,7 @@ extern "C" {
 #include "mkjson.h"
 #include "udpclient.h"
 #include "stdio.h"
+#include "common/doubles.h"
 }
 
 using namespace std;
@@ -204,11 +205,26 @@ int main(int argc, char *argv[])
 			info.cy = 1512;
 
 			// Then call estimate_tag_pose.
-			double err = estimate_tag_pose(&info, &pose);
-			printf("err=%.2f\n",err);
-			printf("R rows=%d cols=%d\n",pose.R->nrows, pose.R->ncols);
-			printf("t rows=%d cols=%d\n",pose.t->nrows, pose.t->ncols);
+			estimate_tag_pose(&info, &pose);
 			printf("t0=%.2f, t1=%.2f t2=%.2f\n",MATD_EL(pose.t,0,0),MATD_EL(pose.t,1,0),MATD_EL(pose.t,2,0));
+
+			//get rotation (Roll,Pitch,Yaw)
+			//Use the method common//doubles.h:s_mat_to_quat to get a quaternion from the matrix. 
+			//Then use common/doubles.h:s_quat_to_rpy to convert that quaternion to RPY.
+			double m44[16], q[4], rpy[3];
+			int k,row,col;
+			for (k=0;k<16;k++){
+				row=k/4; col=k%4;
+				if (row==3 || col==3){
+					m44[k]=0;
+				}else{
+					m44[k]=MATD_EL(pose.R,row,col);
+				}
+				//printf("m44[%d]=%.2f, row=%d, col=%d\n",k,m44[k],row,col);
+			}
+			doubles_mat_to_quat(m44, q);
+			doubles_quat_to_rpy(q,rpy);
+			printf("r=%.2f, p=%.2f y=%.2f\n",rpy[0],rpy[1],rpy[2]);
 
 			char *json = mkjson( MKJSON_OBJ, 3,
 				//MKJSON_STRING,      "mystr", "hello world!",

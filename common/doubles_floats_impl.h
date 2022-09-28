@@ -458,12 +458,9 @@ static inline void TFN(s_mat_to_quat)(const TNAME M[16], TNAME q[4])
     double T = M[0] + M[5] + M[10] + 1.0;
     double S;
 
-	printf("T=%.2f\n",T);
     if (T > 0.0000001) {
         S = sqrt(T) * 2;
-		printf("S=%.2f\n",S);
         q[0] = (TNAME)(0.25 * S);
-		printf("q0=%f\n",q[0]);
         q[1] = (TNAME)((M[9] - M[6]) / S);
         q[2] = (TNAME)((M[2] - M[8]) / S);
         q[3] = (TNAME)((M[4] - M[1]) / S);
@@ -487,7 +484,7 @@ static inline void TFN(s_mat_to_quat)(const TNAME M[16], TNAME q[4])
         q[3] = (TNAME)(0.25 * S);
     }
 
-    //TFN(s_normalize)(q, 4, q);
+    TFN(s_normalize)(q, 4, q);
 }
 
 static inline void TFN(s_quat_xyz_to_xyt)(const TNAME q[4], const TNAME xyz[3], TNAME xyt[3])
@@ -691,7 +688,7 @@ static inline void TFN(s_mat_ABC)(const TNAME *A, int Arows, int Acols,
                                   const TNAME *C, int Crows, int Ccols,
                                   TNAME *R, int Rrows, int Rcols)
 {
-    TNAME *tmp = malloc(sizeof(TNAME)*Arows*Bcols);
+    TNAME *tmp = (TNAME *)malloc(sizeof(TNAME)*Arows*Bcols);
 
     TFN(s_mat_AB)(A, Arows, Acols, B, Brows, Bcols, tmp, Arows, Bcols);
     TFN(s_mat_AB)(tmp, Arows, Bcols, C, Crows, Ccols, R, Rrows, Rcols);
