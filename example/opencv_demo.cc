@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     getopt_add_bool(getopt, 'd', "debug", 0, "Enable debugging output (slow)");
     getopt_add_bool(getopt, 'q', "quiet", 0, "Reduce output");
     getopt_add_string(getopt, 'f', "family", "tag36h11", "Tag family to use");
-    getopt_add_int(getopt, 't', "threads", "1", "Use this many CPU threads");
+    getopt_add_int(getopt, 't', "threads", "6", "Use this many CPU threads");
     getopt_add_double(getopt, 'x', "decimate", "2.0", "Decimate input image by this factor");
     getopt_add_double(getopt, 'b', "blur", "0.0", "Apply low-pass blur to input");
     getopt_add_bool(getopt, '0', "refine-edges", 1, "Spend more time trying to align edges of tags");
@@ -85,6 +85,9 @@ int main(int argc, char *argv[])
         cerr << "Couldn't open video capture device" << endl;
         return -1;
     }
+	cap.set(CAP_PROP_FOURCC, VideoWriter::fourcc('M','J','P','G'));
+	cap.set(CAP_PROP_FRAME_WIDTH, 1920); //1600, 1280
+	cap.set(CAP_PROP_FRAME_HEIGHT, 1080); //896,720
 
     // Initialize tag detector with options
     apriltag_family_t *tf = NULL;
@@ -166,6 +169,7 @@ int main(int argc, char *argv[])
         for (int i = 0; i < zarray_size(detections); i++) {
             apriltag_detection_t *det;
             zarray_get(detections, i, &det);
+#if 0
             line(frame, Point(det->p[0][0], det->p[0][1]),
                      Point(det->p[1][0], det->p[1][1]),
                      Scalar(0, 0xff, 0), 2);
@@ -190,6 +194,7 @@ int main(int argc, char *argv[])
             putText(frame, text, Point(det->c[0]-textsize.width/2,
                                        det->c[1]+textsize.height/2),
                     fontface, fontscale, Scalar(0xff, 0x99, 0), 2);
+#endif
 
 			// Pose Estimate. First create an apriltag_detection_info_t struct using your known parameters.
 			// F(mm) = F(pixels) * SensorWidth(mm) / ImageWidth (pixel)
@@ -247,12 +252,13 @@ int main(int argc, char *argv[])
         if (waitKey(30) >= 0)
             break;
 #endif
-		if (frame_counter > 30000){
-			break;
+		if (frame_counter>= 100){
+			time_t stop_time=time(NULL);
+			printf("timespent=%ld s, frames=%.1f, fps=%.1f\n",(stop_time-start_time),frame_counter,frame_counter/(stop_time-start_time));
+			start_time=stop_time;
+			frame_counter=0;
 		}
     }
-	time_t stop_time=time(NULL);
-	printf("timespent=%ld s, frames=%.1f, fps=%.1f\n",(stop_time-start_time),frame_counter,frame_counter/(stop_time-start_time));
 
     apriltag_detector_destroy(td);
 
